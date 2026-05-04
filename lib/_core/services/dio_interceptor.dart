@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_listin/_core/services/dio_endpoints.dart';
 import 'package:logger/logger.dart';
 
 class DioInterceptor extends Interceptor {
@@ -21,11 +22,9 @@ class DioInterceptor extends Interceptor {
       log += "Corpo: ${JsonEncoder.withIndent("  ").convert(options.headers)}";
     }
     _logger.w(log);
-    Dio().post(
-        "https://flutter-dio-dcf94-default-rtdb.firebaseio.com/logs.json",
-        data: {
-          "request": log,
-        });
+    Dio().post("${DioEndpoints.devBaseUrl}${DioEndpoints.logs}", data: {
+      "request": log,
+    });
 
     super.onRequest(options, handler);
   }
