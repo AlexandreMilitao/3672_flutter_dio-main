@@ -29,17 +29,33 @@ class DioService {
   }
 
   Future<void> getDataFromServer(AppDatabase appdatabase) async {
-    Response response = await _dio.get("listins.json");
+    Response response = await _dio.get(
+      "listins.json",
+      queryParameters: {
+        "orderBy": '"name"',
+        "startAt": 0,
+      },
+    );
 
     if (response.data != null) {
-      if ((response.data as List<dynamic>).isNotEmpty) {
-        Map<String, dynamic> map = {};
+      Map<String, dynamic> map = {};
 
-        map["listins"] = response.data;
+      if (response.data.runtimeType == List) {
+        if ((response.data as List<dynamic>).isNotEmpty) {
+          map["listins"] = response.data;
+        }
+      } else {
+        List<Map<String, dynamic>> tempList = [];
+        for (var mapResponse in (response.data as Map).values) {
+          tempList.add(mapResponse);
+        }
 
-        await LocalDataHandler()
-            .mapToLocalData(map: map, appdatabase: appdatabase);
+        map["listins"] = tempList;
       }
+      await LocalDataHandler().mapToLocalData(
+        map: map,
+        appdatabase: appdatabase,
+      );
     }
   }
 
