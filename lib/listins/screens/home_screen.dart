@@ -184,15 +184,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   saveOnServer() async {
-    await _dioService.saveLocalToServer(_appDatabase);
+    _dioService.saveLocalToServer(_appDatabase).then((error) {
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
+      }
+    });
   }
 
   syncWithServer() async {
-    await _dioService.getDataFromServer(_appDatabase);
+    _dioService.getDataFromServer(_appDatabase).then((error) {
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
+      }
+    });
     refresh();
   }
 
   clearServerData() async {
-    await _dioService.clearServerData();
+    _dioService.clearServerData().then((error) {
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
+      }
+    });
   }
 }

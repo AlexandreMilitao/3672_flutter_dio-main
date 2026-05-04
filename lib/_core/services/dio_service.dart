@@ -21,50 +21,80 @@ class DioService {
     _dio.interceptors.add(DioInterceptor());
   }
 
-  Future<void> saveLocalToServer(AppDatabase appdatabase) async {
+  Future<String?> saveLocalToServer(AppDatabase appdatabase) async {
     Map<String, dynamic> localData =
         await LocalDataHandler().localDataToMap(appdatabase: appdatabase);
 
-    await _dio.put(
-      "listins.json",
-      data: json.encode(
-        localData["listins"],
-      ),
-    );
-  }
-
-  Future<void> getDataFromServer(AppDatabase appdatabase) async {
-    Response response = await _dio.get(
-      "listins.json",
-      queryParameters: {
-        "orderBy": '"name"',
-        "startAt": 0,
-      },
-    );
-
-    if (response.data != null) {
-      Map<String, dynamic> map = {};
-
-      if (response.data.runtimeType == List) {
-        if ((response.data as List<dynamic>).isNotEmpty) {
-          map["listins"] = response.data;
-        }
-      } else {
-        List<Map<String, dynamic>> tempList = [];
-        for (var mapResponse in (response.data as Map).values) {
-          tempList.add(mapResponse);
-        }
-
-        map["listins"] = tempList;
-      }
-      await LocalDataHandler().mapToLocalData(
-        map: map,
-        appdatabase: appdatabase,
+    try {
+      await _dio.put(
+        "listins.json",
+        data: json.encode(
+          localData["listins"],
+        ),
       );
-    }
+    } on DioException catch (e) {
+      if (e.response != null && e.response!.data! != null) {
+        return e.response!.data!.toString();
+      } else {
+        return e.message;
+      }
+    } on Exception {
+      return "Um erro aconteceu";
+    } finally {}
   }
 
-  Future<void> clearServerData() async {
-    await _dio.delete("listins.json");
+  Future<String?> getDataFromServer(AppDatabase appdatabase) async {
+    try {
+      Response response = await _dio.get(
+        "listins.json",
+        queryParameters: {
+          "orderBy": '"name"',
+          "startAt": 0,
+        },
+      );
+
+      if (response.data != null) {
+        Map<String, dynamic> map = {};
+
+        if (response.data.runtimeType == List) {
+          if ((response.data as List<dynamic>).isNotEmpty) {
+            map["listins"] = response.data;
+          }
+        } else {
+          List<Map<String, dynamic>> tempList = [];
+          for (var mapResponse in (response.data as Map).values) {
+            tempList.add(mapResponse);
+          }
+
+          map["listins"] = tempList;
+        }
+        await LocalDataHandler().mapToLocalData(
+          map: map,
+          appdatabase: appdatabase,
+        );
+      }
+    } on DioException catch (e) {
+      if (e.response != null && e.response!.data! != null) {
+        return e.response!.data!.toString();
+      } else {
+        return e.message;
+      }
+    } on Exception catch (e) {
+      return "Erro ao trazer dados";
+    } finally {}
+  }
+
+  Future<String?> clearServerData() async {
+    try {
+      await _dio.delete("listins.json");
+    } on DioException catch (e) {
+      if (e.response != null && e.response!.data! != null) {
+        return e.response!.data!.toString();
+      } else {
+        return e.message;
+      }
+    } on Exception catch (e) {
+      return "Erro ao limpar dados do servidor";
+    }
   }
 }
