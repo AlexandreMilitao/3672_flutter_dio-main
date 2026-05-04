@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_listin/_core/services/dio_service.dart';
 import 'package:flutter_listin/authentication/models/mock_user.dart';
 import 'package:flutter_listin/listins/data/database.dart';
 import 'package:flutter_listin/listins/screens/widgets/home_drawer.dart';
@@ -19,6 +21,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Listin> listListins = [];
   late AppDatabase _appDatabase;
 
+  final DioService _dioService = DioService();
+
+  bool isLoading = false;
+
   @override
   void initState() {
     _appDatabase = AppDatabase();
@@ -38,6 +44,47 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: HomeDrawer(user: widget.user),
       appBar: AppBar(
         title: const Text("Minhas listas"),
+        actions: [
+          PopupMenuButton(
+            icon: const Icon(Icons.cloud),
+            onSelected: (value) {
+              if (value == "SAVE") {
+                saveOnServer();
+              }
+              if (value == "SYNC") {
+                syncWithServer();
+              }
+              if (value == "CLEAR") {
+                clearServerData();
+              }
+            },
+            itemBuilder: (context) {
+              return [
+                const PopupMenuItem(
+                  value: "SAVE",
+                  child: ListTile(
+                    leading: Icon(Icons.upload),
+                    title: Text("Salvar na nuvem"),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: "SYNC",
+                  child: ListTile(
+                    leading: Icon(Icons.download),
+                    title: Text("Sincronizar da nuvem"),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: "CLEAR",
+                  child: ListTile(
+                    leading: Icon(Icons.delete),
+                    title: Text("Deletar da nuvem"),
+                  ),
+                )
+              ];
+            },
+          )
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -45,43 +92,47 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: const Icon(Icons.add),
       ),
-      body: (listListins.isEmpty)
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Image.asset("assets/bag.png"),
-                  const SizedBox(height: 32),
-                  const Text(
-                    "Nenhuma lista ainda.\nVamos criar a primeira?",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ],
-              ),
+      body: isLoading == true
+          ? const Center(
+              child: CircularProgressIndicator(),
             )
-          : RefreshIndicator(
-              onRefresh: () {
-                return refresh();
-              },
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
-                child: ListView(
-                  children: List.generate(
-                    listListins.length,
-                    (index) {
-                      Listin listin = listListins[index];
-                      return HomeListinItem(
-                        listin: listin,
-                        showOptionModal: showOptionModal,
-                      );
-                    },
+          : (listListins.isEmpty)
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Image.asset("assets/bag.png"),
+                      const SizedBox(height: 32),
+                      const Text(
+                        "Nenhuma lista ainda.\nVamos criar a primeira?",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () {
+                    return refresh();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 32, 32, 0),
+                    child: ListView(
+                      children: List.generate(
+                        listListins.length,
+                        (index) {
+                          Listin listin = listListins[index];
+                          return HomeListinItem(
+                            listin: listin,
+                            showOptionModal: showOptionModal,
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
     );
   }
 
@@ -109,15 +160,39 @@ class _HomeScreenState extends State<HomeScreen> {
   refresh() async {
     // Basta alimentar essa variável com Listins que, quando o método for
     // chamado, a tela sera reconstruída com os itens.
-    List<Listin> listaListins = await _appDatabase.getListins();
-
     setState(() {
-      listListins = listaListins;
+      isLoading = true;
     });
+    try {
+      List<Listin> listaListins = await _appDatabase.getListins();
+
+      setState(() {
+        listListins = listaListins;
+      });
+    } catch (e) {
+      throw Exception("Deu erro ");
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
   }
 
   void remove(Listin model) async {
     await _appDatabase.deleteListin(int.parse(model.id));
     refresh();
+  }
+
+  saveOnServer() async {
+    await _dioService.saveLocalToServer(_appDatabase);
+  }
+
+  syncWithServer() async {
+    await _dioService.getDataFromServer(_appDatabase);
+    refresh();
+  }
+
+  clearServerData() async {
+    await _dioService.clearServerData();
   }
 }
